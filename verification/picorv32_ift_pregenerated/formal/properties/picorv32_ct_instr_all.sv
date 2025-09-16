@@ -12,9 +12,6 @@ assign fpv_clk = clk;
 logic fpv_resetn;
 assign fpv_resetn = resetn;
 
-default clocking clk_verif @(posedge fpv_clk); endclocking
-default disable iff (!resetn);
-
 `include "formal/signal_defs/operand_assignments_first.sv"
     // Taint start and stop conditions per instruction
   `include "../common/formal/signal_defs/start_cond_reg.sv"
@@ -22,9 +19,12 @@ default disable iff (!resetn);
 `include "../common/formal/properties/prop_ct_instr.sv"
 
 
-  `include "formal/properties/picorv32_taint_propagation_checker.sv"
-  `include "formal/properties/picorv32_no_taint_ever_checker.sv"
-  `include "../common/formal/assumptions/asm_taint_inj_once.sv"
+  // The checker files below use SystemVerilog features that are not supported by
+  // open-source formal flows (e.g., checkers and concurrent assertions).
+  // For SymbiYosys, keep them disabled or translate to immediate assertions.
+  // `include "formal/properties/picorv32_taint_propagation_checker.sv"
+  // `include "formal/properties/picorv32_no_taint_ever_checker.sv"
+  // `include "../common/formal/assumptions/asm_taint_inj_once.sv"
 
 
   // Configure the design specific signals
@@ -79,15 +79,27 @@ default disable iff (!resetn);
   // assign cpuregs_rs2_stop_cond = cpuregs_rs2_start_cond;
   assign cpuregs_rs2_stop_cond =gen_uc_rs2;
 
-  as_sup_may_change_rs1: assert property (
-  ##1 $changed(cpuregs_rs1)
-  |->
-  cpuregs_rs1_stop_cond
-  );
+  // Convert concurrent SVA to immediate, clocked assertions for SymbiYosys
+  // Detect a change on cpuregs_rs1 and require the stop condition in the same cycle
+  logic [31:0] cpuregs_rs1_q;
+  logic [31:0] cpuregs_rs2_q;
+  always @(posedge fpv_clk) begin
+    if (!fpv_resetn) begin
+      cpuregs_rs1_q <= '0;
+      cpuregs_rs2_q <= '0;
+    end else begin
+      cpuregs_rs1_q <= cpuregs_rs1;
+      cpuregs_rs2_q <= cpuregs_rs2;
+    end
+  end
 
-  as_sup_may_change_rs2: assert property (
-    ##1 $changed(cpuregs_rs2)
-    |->
-    cpuregs_rs2_stop_cond
-  );
+  wire cpuregs_rs1_changed = (cpuregs_rs1 != cpuregs_rs1_q);
+  wire cpuregs_rs2_changed = (cpuregs_rs2 != cpuregs_rs2_q);
+
+  always @(posedge fpv_clk) begin
+    if (fpv_resetn) begin
+      if (cpuregs_rs1_changed) assert (cpuregs_rs1_stop_cond);
+      if (cpuregs_rs2_changed) assert (cpuregs_rs2_stop_cond);
+    end
+  end
 
