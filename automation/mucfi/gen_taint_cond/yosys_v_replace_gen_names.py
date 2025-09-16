@@ -25,7 +25,10 @@
 
 import argparse
 import copy
-import regex as re
+try:
+    import regex as re
+except ImportError:  # Fallback if the 'regex' package is not installed
+    import re
 from Wire import Wire
 from Module import Module
 from Reg import Reg
