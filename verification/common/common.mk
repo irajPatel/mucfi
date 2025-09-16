@@ -79,7 +79,8 @@ setup_design: | gen_taint_conditions setup_formal
 
 setup_formal:
 	$(PYTHON) $(PATH_TO_PY_SCRIPTS)/mucfi/create_operand_file.py --config_file $(DESIGN_CONFIG) --operand_file_template $(OPERAND_FILE_TEMPLATE)
-	$(PYTHON) $(PATH_TO_PY_SCRIPTS)/fpv_core_setup/fpv_core_setup.py --design_file $(DESIGN_FILE) --top_module $(TOP) --outdir $(OUT_DIR) --gen_bind_and_mod=True --regen_design_hier=True --gen_reset_seq=True --rst_sig=$(RESET_SIGNAL) --rst_polarity=$(RESET_POLARITY) --gen_input_no_taint_asm=True --target_tool=jasper
+	# Disabled Jasper-specific generation for SymbiYosys usage
+	# $(PYTHON) $(PATH_TO_PY_SCRIPTS)/fpv_core_setup/fpv_core_setup.py --design_file $(DESIGN_FILE) --top_module $(TOP) --outdir $(OUT_DIR) --gen_bind_and_mod=True --regen_design_hier=True --gen_reset_seq=True --rst_sig=$(RESET_SIGNAL) --rst_polarity=$(RESET_POLARITY) --gen_input_no_taint_asm=True --target_tool=jasper
 	cp templates/design_config.mk $(OUT_DIR)/design_config.mk
 	mkdir -p $(OUT_DIR)/configurations
 	cp templates/print_taint_states.mk $(OUT_DIR)/configurations/print_taint_states.mk
@@ -93,8 +94,9 @@ setup_formal:
 	echo "clock $(CLOCK_SIGNAL)" > $(OUT_DIR)/formal/scripts/clock.tcl
 	touch $(OUT_DIR)/formal/scripts/tasks/$(TOP)_symb_init_no_taint.tcl
 	mkdir -p $(OUT_DIR)/formal/properties/taint_conditions
-	$(JASPER_SERVER) "cd $(OUT_DIR); DESIGN_CONFIG=$(DESIGN_CONFIG) make run_cmd CONFIG=print_taint_states DESIGN_FILE=$(DESIGN_FILE) TOP=$(TOP)"
-	$(PYTHON) $(PATH_TO_PY_SCRIPTS)/fpv_core_setup/fpv_core_setup.py --design_file $(DESIGN_FILE) --top_module $(TOP) --outdir $(OUT_DIR) --gen_symb_init=True --gen_taint_propagation_checker=True --target_tool=jasper --path_to_core=$(OUT_DIR) --gen_bind_and_mod=True
+	# Disabled Jasper invocation and checker autogen for SymbiYosys
+	# $(JASPER_SERVER) "cd $(OUT_DIR); DESIGN_CONFIG=$(DESIGN_CONFIG) make run_cmd CONFIG=print_taint_states DESIGN_FILE=$(DESIGN_FILE) TOP=$(TOP)"
+	# $(PYTHON) $(PATH_TO_PY_SCRIPTS)/fpv_core_setup/fpv_core_setup.py --design_file $(DESIGN_FILE) --top_module $(TOP) --outdir $(OUT_DIR) --gen_symb_init=True --gen_taint_propagation_checker=True --target_tool=jasper --path_to_core=$(OUT_DIR) --gen_bind_and_mod=True
 	cp templates/design_ct_to.mk $(OUT_DIR)/configurations/$(TOP)_ct_to.mk
 	cp templates/design_ct_to_no_taint_states.mk $(OUT_DIR)/configurations/$(TOP)_ct_to_no_taint_states.mk
 	$(PYTHON) $(PATH_TO_PY_SCRIPTS)/mucfi/gen_checker_inst.py  --isa_selection=$(ISA_SELECTION) --operand_assignments_file $(OUT_DIR)/formal/signal_defs/operand_assignments_first.sv --bind_file $(OUT_DIR)/formal/bind/$(TOP)_bind.sv --task_creation_dir $(OUT_DIR)/formal/scripts/tasks/
