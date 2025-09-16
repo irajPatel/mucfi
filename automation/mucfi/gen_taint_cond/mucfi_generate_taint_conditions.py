@@ -170,7 +170,7 @@ def gen_taint_cond_file(design_with_uc, top_module, taint_cond_name, taint_cond_
     if not simplified_expr[-1] == ";":
         simplified_expr += ";"
     with open (taint_cond_file, "w") as f:
-        f.write(f"bit {taint_cond_name};\n")
+        f.write(f"logic {taint_cond_name};\n")
         f.write(f"assign {taint_cond_name} = \n")
         f.write(simplified_expr.replace("& ", "&\n"))
 
@@ -198,7 +198,7 @@ def gen_uc_rs(config, taint_cond_path):
         # uc_call = f"yosys update_condition -signal_name \"\\\\{regrd}\" -verbose\n" # Removing spaces because we flatten the design before
         uc_call = f"yosys update_condition -signal_name \"" + prep_signame_for_uc(regrd) + "\" -verbose\n" # Removing spaces because we flatten the design before
         design_with_uc = Path(config["OUT_DIR"]) / "yosys_passes" / f"design_uc_rs{n}.v"
-        yosys_gen_uc(f"uc_rs{n}.ys.tcl", uc_call, design_with_uc, Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_rs{n}.log")
+        yosys_gen_uc(config, f"uc_rs{n}.ys.tcl", uc_call, design_with_uc, Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_rs{n}.log")
         gen_taint_cond_file(design_with_uc, config["TOP_MODULE"], f"gen_uc_rs{n}", taint_cond_path / f"uc_rs{n}.sv")
         n += 1
 
@@ -207,7 +207,7 @@ def gen_uc_regrd_from_fwd(config, taint_cond_path):
     for regrd in config["REGISTER_READ_SIGNALS"].replace('"','').split(","):
         uc_call = f'yosys update_condition -read-from-signals {config["FORWARDING_INPUT_BEFORE_REGREAD"]} -signal_name "' + prep_signame_for_uc(regrd) + '" -verbose\n'
         design_with_uc = Path(config["OUT_DIR"]) / "yosys_passes" / f"design_uc_regrd{n}_from_fwd.v"
-        yosys_gen_uc(f"uc_regrd{n}_from_fwd.ys.tcl", uc_call, design_with_uc, Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_fwdrd_rs{n}.log")
+        yosys_gen_uc(config, f"uc_regrd{n}_from_fwd.ys.tcl", uc_call, design_with_uc, Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_fwdrd_rs{n}.log")
         gen_taint_cond_file(design_with_uc, config["TOP_MODULE"], f"gen_fwdrd_rs{n}", taint_cond_path / f"uc_fwdrd_rs{n}.sv")
         n += 1
 
@@ -216,7 +216,7 @@ def gen_uc_regrd_from_reg(config, taint_cond_path):
     for regrd in config["REGISTER_READ_SIGNALS"].replace('"','').split(","):
         uc_call = f'yosys update_condition -read-from-signals {config["REGISTER_FILE"]} -signal_name "' + prep_signame_for_uc(regrd) + '" -verbose\n'
         design_with_uc = Path(config["OUT_DIR"]) / "yosys_passes" / f"design_uc_regrd{n}_from_reg.v"
-        yosys_gen_uc(f"uc_regrd{n}_from_reg.ys.tcl", uc_call, design_with_uc, Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_regrd_rs{n}.log")
+        yosys_gen_uc(config, f"uc_regrd{n}_from_reg.ys.tcl", uc_call, design_with_uc, Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_regrd_rs{n}.log")
         gen_taint_cond_file(design_with_uc, config["TOP_MODULE"], f"gen_regrd_rs{n}", taint_cond_path / f"uc_regrd_rs{n}.sv")
         n += 1
 
@@ -224,7 +224,7 @@ def gen_uc_iw(config, taint_cond_path):
     uc_call = f'yosys update_condition -read-from-signals {config["INSTR_WORD"]} -signal_name {config["REG_ADDR"]} -verbose\n'
     design_with_uc = Path(config["OUT_DIR"]) / "yosys_passes" / f"design_uc_iw.v"
     y_log = Path(config["OUT_DIR"]) / "yosys_passes" / f"uc_iw.log"
-    yosys_gen_uc(f"uc_iw.ys.tcl", uc_call, design_with_uc, y_log)
+    yosys_gen_uc(config, f"uc_iw.ys.tcl", uc_call, design_with_uc, y_log)
 
     # If the register address signal name was correctly specified and it is not found in the design by Yosys, then it was optimized out, because it is a direct assignment from the instruction word.
     # In that case the instruction word sampling condition is 1.
@@ -241,7 +241,7 @@ def gen_uc_iw(config, taint_cond_path):
         else:
             gen_taint_cond_file(design_with_uc, config["TOP_MODULE"], f"gen_instr_word_sampling_cond", taint_cond_path / f"uc_iw.sv")
 
-def yosys_gen_uc(tcl_name, uc_call, design_with_uc, uc_log):
+def yosys_gen_uc(config, tcl_name, uc_call, design_with_uc, uc_log):
     '''
     Generates the update condition for the register read signals.
     '''

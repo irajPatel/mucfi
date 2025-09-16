@@ -6,6 +6,7 @@ from pathlib import Path
 
 import sys
 import re
+import argparse
 sys.path.insert(0, str(Path(__file__).parents[2]))
 from common.util_hier_paths import *
 from yosys_v_replace_gen_names import *
@@ -51,7 +52,7 @@ def gen_uc_cond(design_file, module_name, attribute_name):
         return None
     return simplified_expr
 
-def write_uc_cond(outfile):
+def write_uc_cond(outfile, simplified_expr):
     with open(outfile, "w") as of:
         of.write(simplified_expr.replace("& ", "&\n"))
 
@@ -73,7 +74,7 @@ if __name__ == "__main__":
         print("Could not find attribute " + args.attribute_name + " in " + args.design_file)
         sys.exit(1)
 
-    write_uc_cond(args.outfile)
+    write_uc_cond(args.outfile, simplified_expr)
 
 
 
